@@ -99,12 +99,11 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
           joyrideContainer = document.querySelector('.jr_container');
 
           /********************************************
-          When joyride is nested inside an element this
-          prevents any functions or state changes that are
-          binded to the parentfrom executing when
+          When joyride is nested inside an element or the alwaysSwallowClick config option is truthy,
+          prevent any functions or state changes that are binded to the parent from executing when
           clicking on the joyride
           ********************************************/
-          if (hasSelectedElement) {
+          if (hasSelectedElement || scope.joyride.config.alwaysSwallowClick) {
             angular.element(joyrideContainer).on('click', function(event) {
               event.preventDefault();
               event.stopPropagation();
@@ -180,7 +179,15 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
 
             }
             if (!val) {
-              $animate.removeClass(joyrideContainer, 'jr_transition');
+              // removing transition class in a timeout so that the joyride isn't visible until after
+              // setPos runs. Avoids the brief jumping of the joyride in some cases.
+              $timeout(function removeClass() {
+                $animate.removeClass(joyrideContainer, 'jr_transition').then( function focusNextBtn() {
+                  // focus the next button after animation because browsers immediately scroll to focused
+                  // element and we don't want to mess up the scroll-to animation
+                  document.querySelector('.jr_next').focus();
+                });
+              });
             }
           }
         });
@@ -209,7 +216,7 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
           appendJoyride();
           $timeout(function(){
             setPos();
-          })
+          });
         }
 
 
@@ -274,14 +281,17 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
             }
             
             var jrElement = angular.element(document.querySelector(step.selector));
-            var position = getElementOffset(jrElement[0]);
+            var jrElementPos = getElementOffset(jrElement[0]);
+            var position = { top: jrElementPos.top, left: jrElementPos.left };
             var window_width = window.innerWidth;
 
             var jrWidth = joyrideContainer.offsetWidth;
             var targetWidth = jrElement[0].offsetWidth;
+            var targetStyle = window.getComputedStyle(jrElement[0]);
             
             var jrHeight = joyrideContainer.clientHeight;
             var targetHeight = jrElement[0].clientHeight;
+            var minEdgeMargin = scope.joyride.config.minEdgeMargin || 0;
                 
             jrElement.addClass('jr_target');
 
@@ -303,7 +313,13 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
                 }
 
                 else {
-                  position.top += targetHeight + 20;
+                  var paddingBottom = parseFloat(targetStyle.paddingBottom);
+                  if (window.isNaN(paddingBottom)) {
+                    // padding may not be parseable if value is 'auto'
+                    paddingBottom = 0;
+                  }
+                  //subtract any top/bottom padding so that the placement is consistent
+                  position.top += targetHeight + 20 - paddingBottom;
                 }
                 
 
@@ -326,14 +342,14 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
 
               }
 
+              position.left = Math.max(0, position.left);
+              position.top = Math.max(0, position.top);
               // Set joyride position
               joyrideContainer.style.left = position.left + 'px';
               joyrideContainer.style.top = position.top + 'px';
               joyrideContainer.style.right = 'auto';
               joyrideContainer.style.bottom = 'auto';
               joyrideContainer.style.transform = 'none';
-              
-            
             }
 
             /** 
@@ -347,21 +363,34 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
             */
             if(placement !== "left" && placement !== "right"){
 
-              if(joyridePosition.left < 0){
+              if(joyridePosition.left < minEdgeMargin){
                 var triangle = document.querySelector(".jr_container .triangle");
-                triangle.style.left = (targetWidth/2 - triangle.offsetWidth/2)  + 'px';
+                triangle.style.left = (targetWidth/2 - triangle.offsetWidth/2 + jrElementPos.left)  + 'px';
                 triangle.style.right = "auto";
-                joyrideContainer.style.left = 0;
+                joyrideContainer.style.left = minEdgeMargin + 'px';
                 joyrideContainer.style.right = "auto";
               }
 
-              else if((joyridePosition.left + jrWidth) > window_width){
-                var tempPos = joyridePosition.left + (jrWidth/2)
+              if((joyridePosition.left + jrWidth) > (window_width - minEdgeMargin)){
+                var tempPos = window_width - jrElementPos.left - (targetWidth);
+                if (!currentStep.appendToBody) {
+                  tempPos = minEdgeMargin;
+                }
+                if (tempPos + jrWidth > (window_width - minEdgeMargin)) {
+                  // didn't fit from the right, try halfing the distance
+                  tempPos = ((window_width - minEdgeMargin) - jrElementPos.left) - targetWidth;
+                }
+
                 var triangle = document.querySelector(".jr_container .triangle");
-                triangle.style.right = (targetWidth/2 - triangle.offsetWidth/2)  + 'px';
+                var triangleRightPos = Math.max(0, (targetWidth/2 - triangle.offsetWidth/2));
+                triangle.style.right = triangleRightPos + 'px';
                 triangle.style.left = "auto";
                 joyrideContainer.style.left = "auto";
-                joyrideContainer.style.right = 0;
+                joyrideContainer.style.right = tempPos + 'px';
+                if (tempPos + jrWidth > (window_width - minEdgeMargin)) {
+                  // still couldn't get the slide to fit so reduce the width of the joyride container to fit
+                  joyrideContainer.style.width = ((window_width - minEdgeMargin) - tempPos) + 'px';
+                }
               }
             }
             
@@ -371,13 +400,13 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
             */
             else{
 
-              if(joyridePosition.top < 0){
+              if(joyridePosition.top < minEdgeMargin){
                 var triangle = document.querySelector(".jr_container .triangle");
                 var trianglePos = targetHeight/2 - triangle.offsetHeight/2;
                 triangle.style.top = trianglePos < 0 ? 0 + "px" : trianglePos + "px";
 
                 triangle.style.bottom = "auto";
-                joyrideContainer.style.top = 0;
+                joyrideContainer.style.top = minEdgeMargin + 'px';
                 joyrideContainer.style.transform = "none";
               }
 
@@ -387,16 +416,19 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
               if (step.scroll !== false) {
                 if (placement === 'bottom') {
                   scroll_pos = position.top - targetHeight;
+                  if (currentStep.appendToBody) {
+                    scroll_pos += -jrHeight;
+                  }
                 }
                 else if(placement === 'top'){
                   scroll_pos = position.top - jrHeight;
+                  scroll_pos += -20;
                 }
                 else{
                   if(targetHeight < jrHeight){
                     scroll_pos = position.top -  (jrHeight - targetHeight) /2;
                   }
                 }
-                
                 scrollToElement(scroll_pos);
               }
           }

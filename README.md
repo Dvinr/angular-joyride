@@ -88,6 +88,7 @@ The `steps` property accepts an array containing the steps of the joyride, each 
 | appendToBody | boolean | If type is set to "element" setting to true appends the joyride to the body instead of the element the joyride is pointing to, default is false
 | scroll | boolean | If type is set to "element" can disable/enable scrolling to element, default is true
 | beforeStep | function | Function called before step transitions in, can pause joyride until some code executes
+| alwaysSwallowClick | boolean | If alwaysSwallowClick is true then click events on the joyride container will stop propagation, default is false
 
 #### Step Types
 There are 2 available types:
