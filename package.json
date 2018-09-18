@@ -1,6 +1,6 @@
 {
   "name": "@Dvinr/angular-joyride",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A lightweight joyride directive for AngularJs",
   "main": "dist/joyride.js",
   "dependencies": {},
