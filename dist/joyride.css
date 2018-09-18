@@ -58,6 +58,10 @@
 
 .jr_container.jr_element.jr_pos_top .triangle {
   top: 100%;
+  /* specify a default left value in case the left isnt overriden. This places the triangle in the middle
+        of the slide when the slide fits within the viewport without having to be repositioned
+        */
+  left: calc(50% - 12.5px);
   height: 0;
   width: 0;
   border-left: 12.5px solid transparent;

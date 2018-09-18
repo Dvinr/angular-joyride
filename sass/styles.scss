@@ -113,6 +113,10 @@
 		    margin: auto;
 			.triangle{
 				top: 100%;
+        /* specify a default left value in case the left isnt overriden. This places the triangle in the middle
+        of the slide when the slide fits within the viewport without having to be repositioned
+        */
+        left: calc(50% - 12.5px);
 				@include triangle(25px, white, down);
 			}
 		}
