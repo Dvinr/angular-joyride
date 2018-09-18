@@ -54,6 +54,10 @@ function scrollToElement(to) {
           window.scrollTo(0, val);
           if(currentTime < duration) {
               setTimeout(animateScroll, increment);
+          } else {
+            // focus the next button after animation because browsers immediately scroll to focused
+            // element and we don't want to mess up the scroll-to animation
+            document.querySelector('.jr_next').focus();
           }
       };
       animateScroll();
@@ -182,11 +186,7 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
               // removing transition class in a timeout so that the joyride isn't visible until after
               // setPos runs. Avoids the brief jumping of the joyride in some cases.
               $timeout(function removeClass() {
-                $animate.removeClass(joyrideContainer, 'jr_transition').then( function focusNextBtn() {
-                  // focus the next button after animation because browsers immediately scroll to focused
-                  // element and we don't want to mess up the scroll-to animation
-                  document.querySelector('.jr_next').focus();
-                });
+                $animate.removeClass(joyrideContainer, 'jr_transition');
               });
             }
           }
@@ -430,6 +430,8 @@ var joyrideDirective = function($animate, joyrideService, $compile, $templateReq
                   }
                 }
                 scrollToElement(scroll_pos);
+              } else {
+                document.querySelector('.jr_next').focus();
               }
           }
 
